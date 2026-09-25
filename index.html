@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Printing Cost Calculator</title>
+<style>
+:root {
+  --bg:#f4f6f8; --card:#fff; --text:#17202a; --muted:#667085;
+  --border:#d9dee5; --accent:#155eef; --accent2:#0b4bc4;
+  --danger:#d92d20; --success:#087443;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#111827;color:white;padding:28px 20px}
+header .wrap{max-width:1150px;margin:auto}
+h1{margin:0 0 7px;font-size:28px}
+header p{margin:0;color:#cbd5e1}
+main{max-width:1150px;margin:24px auto;padding:0 20px}
+.grid{display:grid;grid-template-columns:1.05fr .95fr;gap:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 2px 8px #00000008}
+.card h2{font-size:18px;margin:0 0 18px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+input,select,button{font:inherit}
+input,select{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--text)}
+input:focus,select:focus{outline:2px solid #155eef22;border-color:var(--accent)}
+.field{margin-bottom:14px}
+.small{font-size:12px;color:var(--muted);margin-top:5px}
+button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:650}
+.primary{background:var(--accent);color:white}.primary:hover{background:var(--accent2)}
+.secondary{background:#eef2f6;color:#344054}.danger{background:#fee4e2;color:#b42318}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.result{font-size:36px;font-weight:750;margin:5px 0 18px}
+.breakdown{border-top:1px solid var(--border);padding-top:12px}
+.line{display:flex;justify-space-between;gap:20px;padding:8px 0}
+.line.total{font-size:19px;font-weight:750;border-top:1px solid var(--border);margin-top:7px;padding-top:14px}
+.line.muted{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap}
+.tab{background:#eef2f6;color:#344054}.tab.active{background:#111827;color:white}
+.panel{display:none}.panel.active{display:block}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:#f8fafc}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:11px}
+.notice{padding:11px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;color:#475467;font-size:13px;margin-bottom:14px}
+footer{max-width:1150px;margin:10px auto 30px;padding:0 20px;color:var(--muted);font-size:12px}
+@media(max-width:800px){.grid,.row{grid-template-columns:1fr}.result{font-size:30px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>3D Printing Cost Calculator</h1>
+  <p>Editable calculator for FDM and mSLA printing methods.</p>
+</div></header>
+
+<main>
+<div class="tabs">
+  <button class="tab active" data-tab="calculator">Calculator</button>
+  <button class="tab" data-tab="materials">Materials</button>
+  <button class="tab" data-tab="settings">Settings</button>
+</div>
+
+<section id="calculator" class="panel active">
+<div class="grid">
+<div class="card">
+<h2>Print details</h2>
+<div class="field"><label>Printing method</label><select id="method"></select></div>
+<div class="field"><label>Material</label><select id="material"></select></div>
+<div class="row">
+  <div class="field"><label>Print time — hours</label><input id="hours" type="number" min="0" step="1" value="2"></div>
+  <div class="field"><label>Print time — minutes</label><input id="minutes" type="number" min="0" max="59" step="1" value="30"></div>
+</div>
+<div class="row">
+  <div class="field"><label>Material used</label><input id="amount" type="number" min="0" step="0.1" value="50"><div class="small" id="amountUnit">grams</div></div>
+  <div class="field"><label>Quantity</label><input id="quantity" type="number" min="1" step="1" value="1"></div>
+</div>
+<div class="actions">
+  <button class="primary" id="calculate">Calculate</button>
+  <button class="secondary" id="reset">Reset</button>
+</div>
+</div>
+
+<div class="card">
+<h2>Cost breakdown</h2>
+<div class="result" id="total">€0.00</div>
+<div class="breakdown">
+  <div class="line"><span>Material</span><strong id="materialCost">€0.00</strong></div>
+  <div class="line"><span>Machine time</span><strong id="machineCost">€0.00</strong></div>
+  <div class="line"><span>Electricity</span><strong id="electricityCost">€0.00</strong></div>
+  <div class="line"><span>Startup / fixed</span><strong id="fixedCost">€0.00</strong></div>
+  <div class="line"><span>Markup / profit</span><strong id="profitCost">€0.00</strong></div>
+  <div class="line total"><span>Customer price</span><strong id="sellingPrice">€0.00</strong></div>
+  <div class="line muted"><span>Cost per item</span><span id="perItem">€0.00</span></div>
+</div>
+<div class="notice" style="margin-top:16px" id="formula"></div>
+</div>
+</div>
+</section>
+
+<section id="materials" class="panel">
+<div class="card">
+<h2>Materials</h2>
+<div class="notice">Prices are stored locally in your browser. Add your own filament or resin materials.</div>
+<div class="actions" style="margin-bottom:15px"><button class="primary" id="addMaterial">Add material</button></div>
+<div class="table-wrap"><table><thead><tr><th>Name</th><th>Method</th><th>Price</th><th>Unit</th><th>Actions</th></tr></thead><tbody id="materialTable"></tbody></table></div>
+</div>
+</section>
+
+<section id="settings" class="panel">
+<div class="card">
+<h2>Pricing settings</h2>
+<div class="row">
+<div class="field"><label>Startup / fixed cost (€)</label><input id="startup" type="number" min="0" step="0.01"></div>
+<div class="field"><label>Electricity price (€/kWh)</label><input id="electricityRate" type="number" min="0" step="0.01"></div>
+</div>
+<div class="row">
+<div class="field"><label>Markup / profit (%)</label><input id="markup" type="number" min="0" step="0.1"></div>
+<div class="field"><label>Default material waste (%)</label><input id="waste" type="number" min="0" step="0.1"></div>
+</div>
+<div class="row">
+<div class="field"><label>Currency symbol</label><input id="currency" maxlength="3"></div>
+</div>
+<button class="primary" id="saveSettings">Save settings</button>
+</div>
+</section>
+</main>
+<footer>All data is stored locally in your browser.</footer>
+
+<script>
+const defaultData = {
+ version: 3,
+ methods: ["FDM", "mSLA"],
+ rates: {
+  FDM: { power: 0.12, rate: 1.5 },
+  mSLA: { power: 0.08, rate: 1.0 }
+ },
+ settings: { startup: 5, electricityRate: 0.32, markup: 20, currency: "€", waste: 5 },
+ materials: [
+  { name: "PLA", method: "FDM", price: 20, unit: "kg" },
+  { name: "PETG", method: "FDM", price: 22, unit: "kg" },
+  { name: "ABS", method: "FDM", price: 25, unit: "kg" },
+  { name: "ASA", method: "FDM", price: 28, unit: "kg" },
+  { name: "TPU", method: "FDM", price: 30, unit: "kg" },
+  { name: "PA-CF", method: "FDM", price: 80, unit: "kg" },
+  { name: "PPS-CF", method: "FDM", price: 100, unit: "kg" },
+  { name: "Standard Resin", method: "mSLA", price: 35, unit: "L" },
+  { name: "Engineering Resin", method: "mSLA", price: 70, unit: "L" }
+ ]
+};
+
+let data = JSON.parse(localStorage.getItem("printCalcData") || "null");
+
+if (!data || data.version !== defaultData.version) {
+  data = structuredClone(defaultData);
+  localStorage.setItem("printCalcData", JSON.stringify(data));
+}
+
+const $ = id => document.getElementById(id);
+function save() { localStorage.setItem("printCalcData", JSON.stringify(data)); }
+function money(n) { return (data.settings.currency || "€") + Number(n).toFixed(2); }
+
+function populate() {
+  $("method").innerHTML = data.methods.map(x => `<option value="${x}">${x}</option>`).join("");
+  updateMaterials();
+  renderTables();
+  loadSettings();
+  calculate();
+}
+
+function updateMaterials() {
+  const method = $("method").value;
+  const list = data.materials.filter(m => m.method === method);
+  $("material").innerHTML = list.map(m => {
+    const realIndex = data.materials.indexOf(m);
+    return `<option value="${realIndex}">${m.name} — ${money(m.price)}/${m.unit}</option>`;
+  }).join("");
+  
+  const selectedIndex = $("material").value;
+  const m = data.materials[selectedIndex];
+  if (m) {
+    $("amountUnit").textContent = m.unit === "L" ? "millilitres" : "grams";
+  }
+}
+
+$("method").addEventListener("change", () => {
+  updateMaterials();
+  calculate();
+});
+
+$("material").addEventListener("change", () => {
+  const selectedIndex = $("material").value;
+  const m = data.materials[selectedIndex];
+  if (m) {
+    $("amountUnit").textContent = m.unit === "L" ? "millilitres" : "grams";
+  }
+  calculate();
+});
+
+function calculate() {
+  const matIndex = $("material").value;
+  const mat = data.materials[matIndex];
+  const method = $("method").value;
+  const pr = data.rates[method] || { power: 0.1, rate: 1.0 };
+  
+  if (!mat) return;
+  
+  const hours = Math.max(0, +$("hours").value || 0);
+  const mins = Math.max(0, +$("minutes").value || 0);
+  const totalHours = hours + mins / 60;
+  const qty = Math.max(1, +$("quantity").value || 1);
+  const amount = Math.max(0, +$("amount").value || 0);
+  const waste = 1 + (+data.settings.waste || 0) / 100;
+  
+  const materialCost = (amount / 1000) * mat.price * waste * qty;
+  const machineCost = pr.rate * totalHours * qty;
+  const electricityCost = pr.power * totalHours * (+data.settings.electricityRate || 0) * qty;
+  const fixed = (+data.settings.startup || 0);
+  
+  const base = materialCost + machineCost + electricityCost + fixed;
+  const profit = base * (+data.settings.markup || 0) / 100;
+  const selling = base + profit;
+  
+  $("materialCost").textContent = money(materialCost);
+  $("machineCost").textContent = money(machineCost);
+  $("electricityCost").textContent = money(electricityCost);
+  $("fixedCost").textContent = money(fixed);
+  $("profitCost").textContent = money(profit);
+  $("sellingPrice").textContent = money(selling);
+  $("total").textContent = money(selling);
+  $("perItem").textContent = money(selling / qty);
+  $("formula").textContent = `Base cost ${money(base)} + ${data.settings.markup}% markup. Material includes ${data.settings.waste}% waste.`;
+}
+
+document.querySelectorAll("input").forEach(x => x.addEventListener("input", calculate));
+$("calculate").onclick = calculate;
+$("reset").onclick = () => {
+  ["hours","minutes","amount","quantity"].forEach((id,i) => $(id).value = [2,30,50,1][i]);
+  calculate();
+};
+
+document.querySelectorAll(".tab").forEach(btn => btn.onclick = () => {
+  document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  $(btn.dataset.tab).classList.add("active");
+});
+
+function renderTables() {
+  $("materialTable").innerHTML = data.materials.map((m, i) => 
+    `<tr><td>${m.name}</td><td><span class="badge">${m.method}</span></td><td>${money(m.price)}</td><td>${m.unit}</td><td><button class="secondary" onclick="editMaterial(${i})">Edit</button> <button class="danger" onclick="deleteMaterial(${i})">Delete</button></td></tr>`
+  ).join("");
+}
+
+function editMaterial(i) {
+  const m = data.materials[i];
+  const name = prompt("Material name:", m.name); if (name === null) return;
+  const method = prompt("Printing method (FDM or mSLA):", m.method); if (!["FDM", "mSLA"].includes(method)) return;
+  const price = parseFloat(prompt(`Price per ${m.unit}:`, m.price)); if (!isFinite(price)) return;
+  const unit = prompt("Unit: kg or L", m.unit); if (!["kg", "L"].includes(unit)) return;
+  data.materials[i] = { name, method, price, unit };
+  save();
+  populate();
+}
+
+function deleteMaterial(i) {
+  if (confirm("Delete this material?")) {
+    data.materials.splice(i, 1);
+    save();
+    populate();
+  }
+}
+
+$("addMaterial").onclick = () => {
+  const name = prompt("Material name:", "New Material"); if (!name) return;
+  const method = prompt("Printing method (FDM or mSLA):", "FDM"); if (!["FDM", "mSLA"].includes(method)) return;
+  const unit = prompt("Unit: kg or L", "kg"); if (!["kg", "L"].includes(unit)) return;
+  const price = parseFloat(prompt(`Price per ${unit}:`, "20")); if (!isFinite(price)) return;
+  data.materials.push({ name, method, price, unit });
+  save();
+  populate();
+};
+
+function loadSettings() {
+  for (const k of ["startup", "electricityRate", "markup", "currency", "waste"]) {
+    $(k).value = data.settings[k];
+  }
+}
+
+$("saveSettings").onclick = () => {
+  ["startup", "electricityRate", "markup", "waste"].forEach(k => data.settings[k] = +$(k).value || 0);
+  data.settings.currency = $("currency").value || "€";
+  save();
+  populate();
+  alert("Settings saved.");
+};
+
+populate();
+</script>
+</body>
+</html>
